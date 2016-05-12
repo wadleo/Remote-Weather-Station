@@ -1,3 +1,5 @@
+#include <TimeLib.h>
+#include <TimeAlarms.h>
 #include <SD.h>
 #include <SPI.h>
 #include <Wire.h>
@@ -10,6 +12,7 @@ DHT dht(DHTPIN,DHTTYPE);
 RTC_DS3231 rtc;
 File weatherlog;
 const int chipSelect = 4;
+const int stationId = 1;
 
 const byte WSPEED = 3;
 volatile long lastWindCheck = 0;
@@ -24,9 +27,9 @@ int winddir ; // [0-360 instantaneous wind direction]
 const byte RAIN = 2;
 volatile float dailyrainin; // [rain inches so far today in local time]
 volatile unsigned long raintime, rainlast, raininterval, rain;
-float h;
-float t;
-float hic;
+float humidity;
+float temp;
+float heatIndex;
 void rainIRQ()
              // Count rain gauge bucket tips as they occur
              // Activated by the magnet and reed switch in the rain gauge, attached to input D2
@@ -58,6 +61,7 @@ void error(char *str)
 
 void setup() 
           {             
+              Alarm.timerRepeat(5, senddelay);
               Serial.begin(9600);
               pinMode(4,OUTPUT);
               pinMode(WDIR, INPUT);
@@ -119,8 +123,9 @@ void setup()
                        weatherlog.println("    Datetime         Humidity      Temperature    HeatIndex     Windspeed     Winddirection     AmtOfRain");
                         // Serial.println("    datetime         humidity      temperature    windspeed     winddirection     AmtOfRain");
                  }  
+                 
             }
-  
+   
 void loop() 
           {
               
@@ -133,13 +138,13 @@ void loop()
                }
               rainlast = raintime; // set up for next event
              //Read humidity in percentage
-               h = dht.readHumidity();
+               humidity = dht.readHumidity();
              // Read temperature as Celsius (the default)
-               t = dht.readTemperature();
+               temp = dht.readTemperature();
              // Check if any reads failed and exit early (to try again).
              // Compute heat index in Celsius (isFahreheit = false)
-              hic = dht.computeHeatIndex(t, h,false);
-             if (isnan(h) || isnan(t)) 
+              heatIndex = dht.computeHeatIndex(temp, humidity,false);
+             if (isnan(humidity) || isnan(temp)) 
              {
                 Serial.println("Failed to read from DHT sensor!");
                 return;
@@ -155,13 +160,12 @@ void loop()
             
              //Stores values to sd card
                
-               delay(3000);
                weatherlog.print("   ");
-               weatherlog.print(h);
+               weatherlog.print(humidity);
                weatherlog.print("         ");
-               weatherlog.print(t);
+               weatherlog.print(temp);
                weatherlog.print("          ");
-               weatherlog.print(hic);
+               weatherlog.print(heatIndex);
                weatherlog.print("          ");
                weatherlog.print(windSpeed);
                weatherlog.print("          ");
@@ -219,22 +223,25 @@ void loop()
                weatherlog.print("               ");
                weatherlog.println(dailyrainin);
                weatherlog.flush();
-               senddelay(3); 
+               Alarm.delay(0); // wait zer0 second between clock display
         }
-    void senddelay(unsigned long ms)
+        
+   void senddelay()
     {
       int i=0;
-      float readings[6]={h,t,hic,windSpeed,winddir,dailyrainin};
+      DateTime now = rtc.now();
+      float readings[13]={stationId, humidity, temp, heatIndex, windSpeed, winddir, dailyrainin, now.hour(), now.minute(), now.second(), now.day(), now.month(), now.year()};
       unsigned long start = millis();
-      do{
-         Serial.print("arr={");
-              for(char i=0;i<6;i++){
-                Serial.print(readings[i]);
-                Serial.print(",");
-              }
-              Serial.println("0}");}
-              while (millis() - start < ms);
+      Serial.print("array={");
+      for(char i=0; i < 13; i++)  {
+          Serial.print(readings[i]);
+          Serial.print(",");
+      }
+      Serial.println("0}");
+           
+              
     }
+    
 void logData()
         {
               DateTime now;
