@@ -235,11 +235,11 @@ void loop()
       do{
          Serial.print("");
               for(char i=0;i<13;i++){
-                Serial.print(reading[i]);
+                Serial.print(readings[i]);
                 Serial.print(" ");
               }
               Serial.println("0");}
-              while (millis() - start < ms+1);
+              while (millis() - start < ms);
     }
 int logData()
         {
