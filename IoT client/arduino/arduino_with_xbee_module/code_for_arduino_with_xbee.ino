@@ -230,7 +230,16 @@ void loop()
     {
       DateTime now = rtc.now();
       int i=0;
-      
+      float readings[13]={stationId,h,t,hic,windSpeed,winddir,dailyrainin,now.hour(), now.minute(), now.second(), now.day(), now.month(), now.year()};
+      unsigned long start = millis();
+      do{
+         Serial.print("");
+              for(char i=0;i<13;i++){
+                Serial.print(reading[i]);
+                Serial.print(" ");
+              }
+              Serial.println("0");}
+              while (millis() - start < ms+1);
     }
 int logData()
         {
